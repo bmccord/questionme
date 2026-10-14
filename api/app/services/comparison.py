@@ -15,9 +15,13 @@ Rules that shape this file:
    that sees only those three words will score it as evasive.
 
 4. Questions are compared in parallel. Sequentially a full candidate took
-   about ten minutes, which is long enough that the admin page looks broken.
-   Each worker owns its own database session; nothing is shared but plain
-   data loaded up front.
+   about ten minutes; with six workers it is about a minute for a fully
+   answered one (~105 calls). Each worker owns its own database session;
+   nothing is shared but plain data loaded up front.
+
+   Measure this against a CANDIDATE WHO ANSWERED, not a sparse one. An
+   unanswered question never reaches Claude, so a mostly-empty candidate
+   finishes in seconds and tells you nothing about the real cost.
 """
 from __future__ import annotations
 
