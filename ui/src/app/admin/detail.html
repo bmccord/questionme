@@ -1,0 +1,100 @@
+@if (data(); as d) {
+  <header>
+    <div>
+      <a routerLink="/admin" class="back">← Candidates</a>
+      <h1>{{ d.name }}</h1>
+      <p class="sub">
+        {{ d.status === 'submitted' ? 'Submitted ' + (d.submitted_at | date:'medium') : d.status }}
+        · {{ counts().answered }} of {{ counts().total }} answered
+        @if (counts().differs) { · <strong>{{ counts().differs }}</strong> differ from baseline }
+      </p>
+    </div>
+    <button type="button" (click)="runComparison()" [disabled]="running()">
+      {{ running() ? 'Running…' : 'Re-run comparison' }}
+    </button>
+  </header>
+
+  <nav class="filters">
+    <button type="button" [class.on]="filter() === 'all'" (click)="filter.set('all')">
+      All {{ counts().total }}
+    </button>
+    <button type="button" [class.on]="filter() === 'differs'" (click)="filter.set('differs')">
+      Differs {{ counts().differs }}
+    </button>
+    <button type="button" [class.on]="filter() === 'unanswered'" (click)="filter.set('unanswered')">
+      Unanswered {{ counts().total - counts().answered }}
+    </button>
+  </nav>
+
+  @for (q of rows(); track q.id) {
+    <article class="q">
+      <div class="head">
+        <span class="n">{{ q.num }}</span>
+        <h3>{{ q.text }}</h3>
+      </div>
+
+      <div class="cols">
+        <div class="col baseline">
+          <div class="label">Baseline — Nathan Tate</div>
+          @if (q.type === 'mc') {
+            <ul class="opts">
+              @for (o of q.options ?? []; track o) {
+                <li [class.on]="(q.baseline_choices ?? []).includes(o)">
+                  {{ (q.baseline_choices ?? []).includes(o) ? '●' : '○' }} {{ o }}
+                </li>
+              }
+            </ul>
+            @if (q.comment_baseline) { <p class="note">{{ q.comment_baseline }}</p> }
+          } @else if (q.baseline) {
+            <p>{{ q.baseline }}</p>
+          } @else {
+            <p class="muted">No baseline{{ q.baseline_note ? ' — ' + q.baseline_note : '' }}</p>
+          }
+        </div>
+
+        <div class="col theirs">
+          <div class="label">{{ d.name }}</div>
+          @if (q.type === 'mc') {
+            <ul class="opts">
+              @for (o of q.options ?? []; track o) {
+                <li [class.on]="(q.answer?.choices ?? []).includes(o)">
+                  {{ (q.answer?.choices ?? []).includes(o) ? '●' : '○' }} {{ o }}
+                </li>
+              }
+            </ul>
+            @if (q.answer?.comment) { <p class="note">{{ q.answer!.comment }}</p> }
+          } @else if (hasAnswer(q)) {
+            <p>{{ q.answer!.value }}</p>
+          } @else {
+            <p class="muted skipped">Not answered</p>
+          }
+        </div>
+      </div>
+
+      @for (c of parts(q); track c.part) {
+        <div class="verdict v-{{ c.verdict }}">
+          <span class="tag">{{ c.verdict }}</span>
+          <span class="where">{{ c.part === 'comment' ? 'their comment' : 'the answer' }}</span>
+          @if (c.summary) { <span class="text">{{ c.summary }}</span> }
+          <span class="how">{{ c.deterministic ? 'exact' : c.model }}</span>
+        </div>
+        @if (c.detail?.notable) {
+          <div class="notable">Worth noting: {{ c.detail.notable }}</div>
+        }
+      }
+    </article>
+  } @empty {
+    <p class="muted pad">Nothing matches that filter.</p>
+  }
+
+  <section class="notes">
+    <h2>Private notes</h2>
+    @for (n of d.notes; track n.id) {
+      <div class="note-row"><p>{{ n.body }}</p><span>{{ n.updated_at | date:'short' }}</span></div>
+    }
+    <textarea rows="3" [(ngModel)]="note" placeholder="Add a note (only you see these)"></textarea>
+    <button type="button" (click)="addNote()">Add note</button>
+  </section>
+} @else {
+  <p class="pad muted">Loading…</p>
+}

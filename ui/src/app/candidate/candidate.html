@@ -1,0 +1,148 @@
+@if (error(); as e) {
+  <div class="banner error">{{ e }}</div>
+}
+
+@if (view(); as v) {
+  <header class="bar">
+    <div>
+      <strong>{{ v.name }}</strong>
+      @if (readOnly()) { <span class="pill done">Submitted</span> }
+    </div>
+    <div class="progress">
+      <span>{{ answeredCount() }} of {{ v.total }} answered</span>
+      <div class="track"><div class="fill" [style.width.%]="answeredCount() / v.total * 100"></div></div>
+      @if (saving() > 0) { <span class="saving">saving…</span> }
+    </div>
+    <button type="button" (click)="showList.set(!showList())">
+      {{ showList() ? 'Close' : 'All questions' }}
+    </button>
+  </header>
+
+  @if (readOnly()) {
+    <div class="banner info">
+      You submitted this on {{ v.submitted_at | date:'medium' }}. It can no longer be
+      changed, but you can read back everything you sent.
+    </div>
+  }
+
+  @if (showList()) {
+    <nav class="list">
+      @for (q of questions(); track q.id; let i = $index) {
+        <button type="button" class="row" [class.answered]="isAnswered(q)"
+                [class.here]="i === current()" (click)="go(i)">
+          <span class="n">{{ q.num }}</span>
+          <span class="t">{{ q.text }}</span>
+          <span class="mark">{{ isAnswered(q) ? '✓' : '' }}</span>
+        </button>
+      }
+    </nav>
+  } @else if (question(); as q) {
+    <main>
+      @for (ref of referenced(); track ref.question.id) {
+        <aside class="reference">
+          <div class="reflabel">For reference — question {{ ref.question.num }}</div>
+          <p class="refq">{{ ref.question.text }}</p>
+          @if (ref.answer?.value) {
+            <p class="refa">You answered: {{ ref.answer!.value }}</p>
+          } @else if (ref.answer?.choices?.length) {
+            <p class="refa">You chose: {{ ref.answer!.choices!.join(', ') }}</p>
+          } @else {
+            <p class="refa muted">You have not answered that one yet.</p>
+          }
+          <button type="button" class="link" (click)="jumpToNum(ref.question.num)">
+            Go to question {{ ref.question.num }}
+          </button>
+        </aside>
+      }
+
+      <article class="question">
+        <div class="qnum">Question {{ q.num }}</div>
+        <h2>{{ q.text }}</h2>
+
+        @if (q.type === 'mc') {
+          <div class="options">
+            @for (opt of q.options ?? []; track opt) {
+              <label class="option" [class.picked]="isChosen(q, opt)">
+                <input [type]="q.multi_select ? 'checkbox' : 'radio'"
+                       [name]="q.id" [checked]="isChosen(q, opt)"
+                       [disabled]="readOnly()"
+                       (change)="toggleChoice(q, opt)" />
+                <span>{{ opt }}</span>
+              </label>
+            }
+          </div>
+          @if (q.multi_select) {
+            <p class="hint">You may choose more than one.</p>
+          }
+          <label class="comment">
+            <span>{{ q.comment_prompt || 'Comments (optional)' }}</span>
+            <textarea rows="4" [disabled]="readOnly()"
+                      [ngModel]="answerFor(q.id).comment"
+                      (ngModelChange)="onComment(q.id, $event)"></textarea>
+          </label>
+        } @else {
+          <textarea class="answer" rows="12" [disabled]="readOnly()"
+                    placeholder="Your answer"
+                    [ngModel]="answerFor(q.id).value"
+                    (ngModelChange)="onText(q.id, $event)"></textarea>
+        }
+      </article>
+
+      <nav class="paging">
+        <button type="button" (click)="go(current() - 1)" [disabled]="current() === 0">
+          ← Previous
+        </button>
+        <span>{{ current() + 1 }} / {{ questions().length }}</span>
+        @if (current() < questions().length - 1) {
+          <button type="button" (click)="go(current() + 1)">Next →</button>
+        } @else if (!readOnly()) {
+          <button type="button" class="primary" (click)="openSubmit()">Review and submit</button>
+        } @else {
+          <span></span>
+        }
+      </nav>
+
+      @if (!readOnly() && current() < questions().length - 1) {
+        <div class="submitrow">
+          <button type="button" class="ghost" (click)="openSubmit()">Review and submit</button>
+        </div>
+      }
+    </main>
+  }
+
+  @if (preview(); as p) {
+    <div class="scrim" (click)="preview.set(null)"></div>
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3>Submit your questionnaire?</h3>
+      <p class="warn">
+        <strong>This cannot be undone.</strong> Once you submit, you will not be able
+        to change any answer. The link will still work, but only to read back what
+        you sent.
+      </p>
+      <p>You have answered <strong>{{ p.answered }}</strong> of {{ p.total }} questions.</p>
+
+      @if (p.unanswered.length) {
+        <div class="blanks">
+          <p><strong>{{ p.unanswered.length }}</strong> are still blank:</p>
+          <div class="nums">
+            @for (n of p.unanswered; track n) {
+              <button type="button" class="num" (click)="preview.set(null); jumpToNum(n)">{{ n }}</button>
+            }
+          </div>
+          <p class="hint">Click any number to go back to it.</p>
+        </div>
+      } @else {
+        <p class="allgood">Every question has an answer.</p>
+      }
+
+      <div class="actions">
+        <button type="button" (click)="preview.set(null)">Keep working</button>
+        <button type="button" class="primary" [disabled]="submitting()" (click)="confirmSubmit()">
+          {{ submitting() ? 'Submitting…' : 'Submit — I understand this is final' }}
+        </button>
+      </div>
+    </div>
+  }
+} @else if (!error()) {
+  <p class="loading">Loading…</p>
+}
