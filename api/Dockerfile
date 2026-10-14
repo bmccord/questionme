@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY seed.py .
+COPY seed.py merge_ab.py ./
 
 # Non-root. The image holds no data and writes nothing.
 RUN useradd --system --uid 10001 questionme
