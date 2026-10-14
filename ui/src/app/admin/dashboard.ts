@@ -30,6 +30,36 @@ import { CandidateRow } from '../models';
       </div>
     }
 
+    @if (pendingDelete(); as p) {
+      <div class="scrim" (click)="cancelDelete()"></div>
+      <div class="modal" role="dialog" aria-modal="true">
+        <h3>Delete {{ p.name }}?</h3>
+        @if (p.status === 'submitted') {
+          <p class="warn">
+            <strong>{{ p.name }} has already submitted.</strong> Their link locked
+            when they did, so they cannot fill it in again. Deleting removes their
+{{ p.answered }} {{ p.answered === 1 ? 'answer' : 'answers' }} permanently.
+          </p>
+          <p>Type <strong>{{ p.name }}</strong> to confirm:</p>
+          <input [(ngModel)]="confirmName" name="cn" placeholder="Candidate name" />
+        } @else {
+          <p>
+This removes the candidate and their {{ p.answered }}
+            saved {{ p.answered === 1 ? 'answer' : 'answers' }}.
+            Their link stops working. This cannot be undone.
+          </p>
+        }
+        @if (deleteError()) { <p class="err">{{ deleteError() }}</p> }
+        <div class="modalactions">
+          <button type="button" (click)="cancelDelete()">Cancel</button>
+          <button type="button" class="danger solid" [disabled]="deleting()"
+                  (click)="doDelete()">
+            {{ deleting() ? 'Deleting…' : 'Delete permanently' }}
+          </button>
+        </div>
+      </div>
+    }
+
     <table>
       <thead>
         <tr><th>Name</th><th>Status</th><th>Answered</th><th>Submitted</th><th></th></tr>
@@ -42,7 +72,10 @@ import { CandidateRow } from '../models';
             <td><span class="pill {{ c.status }}">{{ label(c.status) }}</span></td>
             <td class="num">{{ c.answered }} / {{ c.total }}</td>
             <td class="num">{{ c.submitted_at ? (c.submitted_at | date:'mediumDate') : '—' }}</td>
-            <td><button type="button" class="small" (click)="copy(c.link)">Copy link</button></td>
+            <td class="rowactions">
+              <button type="button" class="small" (click)="copy(c.link)">Copy link</button>
+              <button type="button" class="small danger" (click)="askDelete(c)">Delete</button>
+            </td>
           </tr>
         } @empty {
           <tr><td colspan="5" class="empty">No candidates yet.</td></tr>
@@ -77,6 +110,21 @@ import { CandidateRow } from '../models';
              background: #fff; border-radius: 6px; cursor: pointer; }
     button.small { padding: .25rem .55rem; font-size: .8rem; }
     a { color: #2f6f4f; }
+    .rowactions { display: flex; gap: .35rem; }
+    button.danger { color: #9a2a1a; border-color: #e0bdb4; }
+    button.danger.solid { background: #9a2a1a; border-color: #9a2a1a; color: #fff; }
+    .scrim { position: fixed; inset: 0; background: rgba(20,20,26,.45); z-index: 10; }
+    .modal { position: fixed; z-index: 11; top: 50%; left: 50%;
+             transform: translate(-50%,-50%); width: min(30rem, calc(100vw - 2rem));
+             background: #fff; border-radius: 10px; padding: 1.4rem;
+             box-shadow: 0 18px 50px rgba(0,0,0,.25); }
+    .modal h3 { margin: 0 0 .75rem; }
+    .modal input { width: 100%; box-sizing: border-box; font: inherit; padding: .5rem;
+                   border: 1px solid #ccccd4; border-radius: 6px; }
+    .warn { background: #fdeee6; border-left: 4px solid #9a2a1a;
+            padding: .7rem .85rem; border-radius: 0 6px 6px 0; }
+    .err { color: #8a2020; font-size: .88rem; }
+    .modalactions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.2rem; }
   `],
 })
 export class DashboardComponent {
@@ -89,6 +137,10 @@ export class DashboardComponent {
   newLink = signal<string | null>(null);
   newName = signal('');
   copied = signal(false);
+  pendingDelete = signal<CandidateRow | null>(null);
+  confirmName = '';
+  deleting = signal(false);
+  deleteError = signal<string | null>(null);
 
   constructor() { this.load(); }
 
@@ -117,6 +169,33 @@ export class DashboardComponent {
       this.copied.set(true);
       setTimeout(() => this.copied.set(false), 1500);
     });
+  }
+
+  askDelete(c: CandidateRow) {
+    this.pendingDelete.set(c);
+    this.confirmName = '';
+    this.deleteError.set(null);
+  }
+
+  cancelDelete() { this.pendingDelete.set(null); }
+
+  doDelete() {
+    const c = this.pendingDelete();
+    if (!c) return;
+    this.deleting.set(true);
+    this.deleteError.set(null);
+    this.api.deleteCandidate(c.id, c.status === 'submitted' ? this.confirmName : undefined)
+      .subscribe({
+        next: () => {
+          this.deleting.set(false);
+          this.pendingDelete.set(null);
+          this.load();
+        },
+        error: err => {
+          this.deleting.set(false);
+          this.deleteError.set(err?.error?.detail ?? 'Could not delete.');
+        },
+      });
   }
 
   logout() { this.api.logout().subscribe(() => this.router.navigateByUrl('/admin/login')); }

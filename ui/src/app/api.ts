@@ -51,6 +51,13 @@ export class Api {
       '/api/admin/candidates', { name, email }, { withCredentials: true });
   }
 
+  deleteCandidate(id: number, confirmName?: string) {
+    const q = confirmName ? `?confirm=${encodeURIComponent(confirmName)}` : '';
+    return this.http.delete<{ deleted: string; answers: number; comparisons: number;
+                              notes: number }>(
+      `/api/admin/candidates/${id}${q}`, { withCredentials: true });
+  }
+
   candidate(id: number): Observable<CandidateDetail> {
     return this.http.get<CandidateDetail>(`/api/admin/candidates/${id}`,
       { withCredentials: true });

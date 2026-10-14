@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -104,6 +104,38 @@ def invite(payload: NewCandidate, db: Session = Depends(get_db),
     db.refresh(c)
     return {"id": c.id, "name": c.name,
             "link": f"{settings.public_base_url}/q/{c.token}"}
+
+
+@router.delete("/candidates/{cid}")
+def delete_candidate(cid: int, confirm: str = "", db: Session = Depends(get_db),
+                     _: str = Depends(require_admin)) -> dict:
+    """Delete a candidate and everything belonging to them.
+
+    A SUBMITTED candidate has given you work they cannot redo - the link locks
+    on submit, so there is no way for them to fill it in again. Deleting that
+    requires `?confirm=<their exact name>`; an unsubmitted one does not.
+
+    Children are removed explicitly rather than relying on the database
+    cascade, so the counts can be reported back and the behaviour does not
+    depend on how the schema was created.
+    """
+    c = db.get(Candidate, cid)
+    if c is None:
+        raise HTTPException(404, "no such candidate")
+
+    if c.status == CandidateStatus.submitted and confirm.strip() != c.name:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{c.name} has submitted. To delete their answers, confirm with "
+            f"their exact name.")
+
+    answers = db.execute(delete(Answer).where(Answer.candidate_id == cid)).rowcount
+    comps = db.execute(delete(Comparison).where(Comparison.candidate_id == cid)).rowcount
+    notes = db.execute(delete(Note).where(Note.candidate_id == cid)).rowcount
+    name = c.name
+    db.delete(c)
+    db.commit()
+    return {"deleted": name, "answers": answers, "comparisons": comps, "notes": notes}
 
 
 @router.get("/candidates/{cid}")
