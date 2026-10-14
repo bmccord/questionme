@@ -19,7 +19,8 @@ import { PromptSet } from '../models';
           @if (data()?.active; as a) {
             Version {{ a.version }} is active.
           } @else {
-            No prompt saved yet — the built-in fallback is being used.
+            No version saved yet. The built-in prompt is in force and is loaded
+            below — edit it and save to make it version 1.
           }
         </p>
       </div>
@@ -102,7 +103,9 @@ export class PromptComponent {
   reload() {
     this.api.prompts().subscribe(d => {
       this.data.set(d);
-      this.body = d.active?.body ?? '';
+      // Open on whatever is actually in force - the saved version, or the
+      // built-in fallback - so this is an edit rather than a blank page.
+      this.body = d.active?.body ?? d.fallback ?? '';
     });
   }
 

@@ -101,6 +101,8 @@ export interface PromptVersion {
 }
 
 export interface PromptSet {
+  /** The built-in prompt used while nothing is saved. */
+  fallback: string;
   active: { id: number; version: number; body: string } | null;
   versions: PromptVersion[];
 }

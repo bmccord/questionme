@@ -298,6 +298,10 @@ def get_prompts(db: Session = Depends(get_db), _: str = Depends(require_admin)) 
     rows = list(db.scalars(select(Prompt).order_by(Prompt.version.desc())))
     active = next((p for p in rows if p.is_active), None)
     return {
+        # The prompt actually in use when nothing is saved. Returned so the
+        # editor can open on it rather than a blank box - composing from
+        # nothing is a worse starting point than editing what is running.
+        "fallback": comparison_service.FALLBACK_PROMPT,
         "active": None if active is None else
                   {"id": active.id, "version": active.version, "body": active.body},
         "versions": [{"id": p.id, "version": p.version, "is_active": p.is_active,
