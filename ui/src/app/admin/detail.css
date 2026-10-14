@@ -53,3 +53,33 @@ button:disabled { opacity: .5; }
 .pad { padding: 2rem 0; }
 
 @media (max-width: 46rem) { .cols { grid-template-columns: 1fr; } }
+
+/* --- a comparison in flight ----------------------------------------------
+   Replaces a flat 8-second wait that was never long enough for a full
+   candidate and left the page looking half-broken. */
+.headactions { display: flex; align-items: center; gap: .6rem; }
+a.plain { font-size: .88rem; color: #2f6f4f; }
+.runbar {
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  background: #f2f7f4; border: 1px solid #cfe3d8; border-radius: 8px;
+  padding: .7rem .9rem; margin: 1rem 0; font-size: .9rem;
+}
+.runbar .track { flex: 1 1 10rem; height: 6px; background: #dfeae3;
+                 border-radius: 3px; overflow: hidden; min-width: 6rem; }
+.runbar .fill { height: 100%; background: #2f6f4f; transition: width .3s; }
+.runbar .hint { color: #55555f; font-size: .82rem; }
+.spin { width: 12px; height: 12px; border-radius: 50%;
+        border: 2px solid #cfe3d8; border-top-color: #2f6f4f;
+        animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- per-question actions and the baseline editor ------------------------ */
+.qactions { margin-left: auto; display: flex; gap: .35rem; flex-shrink: 0; }
+.editor textarea { width: 100%; box-sizing: border-box; font: inherit;
+                   padding: .6rem; border: 1px solid #ccccd4; border-radius: 6px; }
+.editopt { display: flex; gap: .5rem; align-items: flex-start; padding: .35rem 0; }
+.editlabel { display: block; font-size: .8rem; color: #55555f; margin: .6rem 0 .25rem; }
+.editnote { font-size: .8rem; color: #8a6d22; background: #fdf6e6;
+            padding: .5rem .7rem; border-radius: 5px; margin: .6rem 0 .5rem; }
+.editactions { display: flex; justify-content: flex-end; gap: .5rem; }
+button.primary { background: #2f6f4f; border-color: #2f6f4f; color: #fff; }

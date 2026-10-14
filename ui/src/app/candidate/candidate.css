@@ -106,3 +106,26 @@ button.link { border: 0; background: none; padding: 0; color: #2f6f4f; text-deco
   .bar { gap: .75rem; }
   .actions button { flex: 1 1 100%; }
 }
+
+/* --- header actions ------------------------------------------------------
+   "Finish & submit" lives here, deliberately far from Next. In testing it
+   was too easy to treat a submit button sitting beside Next as the natural
+   way forward - and that mistake is irreversible. */
+.baractions { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+button.quiet { border-color: transparent; color: #55555f; }
+button.finish { border-color: #b4452a; color: #b4452a; font-weight: 600; }
+button.finish:hover:not(:disabled) { background: #fdeee9; }
+.endnote { font-size: .85rem; color: #7a7a85; font-style: italic; }
+
+/* --- the opening instructions ------------------------------------------- */
+.intro { max-width: 42rem; }
+.intro h1 { font-size: 1.5rem; margin: .5rem 0 .75rem; }
+.intro .lede { font-size: 1.02rem; color: #44444c; margin-bottom: 1.5rem; }
+.steps { padding-left: 1.2rem; margin: 0 0 2rem; }
+.steps li { margin-bottom: 1rem; line-height: 1.6; }
+.steps li.warn {
+  list-style: none; margin-left: -1.2rem; margin-top: 1.5rem;
+  background: #fdf3ef; border-left: 4px solid #b4452a;
+  padding: .9rem 1rem; border-radius: 0 6px 6px 0;
+}
+button.big { font-size: 1rem; padding: .7rem 1.4rem; }

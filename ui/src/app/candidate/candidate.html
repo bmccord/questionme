@@ -13,9 +13,15 @@
       <div class="track"><div class="fill" [style.width.%]="answeredCount() / v.total * 100"></div></div>
       @if (saving() > 0) { <span class="saving">saving…</span> }
     </div>
-    <button type="button" (click)="showList.set(!showList())">
-      {{ showList() ? 'Close' : 'All questions' }}
-    </button>
+    <div class="baractions">
+      <button type="button" class="quiet" (click)="showIntro()">Instructions</button>
+      <button type="button" (click)="showList.set(!showList()); stage.set('questions')">
+        {{ showList() ? 'Close' : 'All questions' }}
+      </button>
+      @if (!readOnly()) {
+        <button type="button" class="finish" (click)="openSubmit()">Finish &amp; submit</button>
+      }
+    </div>
   </header>
 
   @if (readOnly()) {
@@ -25,7 +31,47 @@
     </div>
   }
 
-  @if (showList()) {
+  @if (stage() === 'intro') {
+    <main class="intro">
+      <h1>Before you begin</h1>
+      <p class="lede">
+        This questionnaire has {{ v.total }} questions. There is no time limit and
+        nothing is graded on speed &mdash; take as long as you need.
+      </p>
+
+      <ol class="steps">
+        <li>
+          <strong>Your answers save by themselves.</strong> A moment after you stop
+          typing, each answer is stored. There is no Save button to remember.
+        </li>
+        <li>
+          <strong>You can leave and come back.</strong> Close the tab whenever you
+          like and return to this same link later. Your work will be here.
+        </li>
+        <li>
+          <strong>Answer in any order.</strong> Use <em>Next</em> and
+          <em>Previous</em> to move through, or <em>All questions</em> at the top to
+          jump to any one and see what you have left.
+        </li>
+        <li>
+          <strong>You may skip a question</strong> and come back to it. We would
+          rather have a thoughtful answer later than a rushed one now.
+        </li>
+        <li class="warn">
+          <strong>&ldquo;Finish &amp; submit&rdquo; is final.</strong> It sits on its
+          own at the top right, apart from the Next button, because it ends your
+          questionnaire. Once you submit, <strong>no answer can be changed</strong>.
+          Before it goes through you will be shown anything still blank, and you can
+          go back. Use <em>Next</em> to move between questions &mdash; only use
+          Finish &amp; submit when you are completely done.
+        </li>
+      </ol>
+
+      <button type="button" class="primary big" (click)="begin()">
+        {{ answeredCount() > 0 ? 'Continue the questionnaire' : 'Begin the questionnaire' }}
+      </button>
+    </main>
+  } @else if (showList()) {
     <nav class="list">
       @for (q of questions(); track q.id; let i = $index) {
         <button type="button" class="row" [class.answered]="isAnswered(q)"
@@ -95,18 +141,14 @@
         <span>{{ current() + 1 }} / {{ questions().length }}</span>
         @if (current() < questions().length - 1) {
           <button type="button" (click)="go(current() + 1)">Next →</button>
-        } @else if (!readOnly()) {
-          <button type="button" class="primary" (click)="openSubmit()">Review and submit</button>
         } @else {
-          <span></span>
+          <!-- The last question deliberately does NOT offer submit here. The
+               submit control stays in one place, in the header, so it is never
+               the button that follows "Next" in the flow. -->
+          <span class="endnote">Last question &mdash; submit from the top when ready</span>
         }
       </nav>
 
-      @if (!readOnly() && current() < questions().length - 1) {
-        <div class="submitrow">
-          <button type="button" class="ghost" (click)="openSubmit()">Review and submit</button>
-        </div>
-      }
     </main>
   }
 

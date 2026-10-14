@@ -26,6 +26,10 @@ export class CandidateComponent {
   saving = signal(0);
   current = signal(0);                       // index into questions
   showList = signal(false);
+  // 'intro' until they choose to begin. Returning candidates skip it, but it
+  // stays reachable from the header - the instructions explain that
+  // submitting is final, which is the one thing they must not miss.
+  stage = signal<'intro' | 'questions'>('intro');
   preview = signal<SubmitPreview | null>(null);
   submitting = signal(false);
 
@@ -52,7 +56,15 @@ export class CandidateComponent {
     });
 
     this.api.view(this.token).subscribe({
-      next: v => { this.view.set(v); this.draft.set({ ...v.answers }); },
+      next: v => {
+        this.view.set(v);
+        this.draft.set({ ...v.answers });
+        // Someone coming back to work they have already started, or reading a
+        // submitted questionnaire, does not need the instructions again.
+        if (v.read_only || Object.keys(v.answers).length > 0) {
+          this.stage.set('questions');
+        }
+      },
       error: () => this.error.set('This link is not valid.'),
     });
   }
@@ -122,7 +134,20 @@ export class CandidateComponent {
     return (this.answerFor(q.id).choices ?? []).includes(option);
   }
 
+  begin() {
+    this.stage.set('questions');
+    this.current.set(0);
+    window.scrollTo({ top: 0 });
+  }
+
+  showIntro() {
+    this.stage.set('intro');
+    this.showList.set(false);
+    window.scrollTo({ top: 0 });
+  }
+
   go(i: number) {
+    this.stage.set('questions');
     this.current.set(Math.max(0, Math.min(i, this.questions().length - 1)));
     this.showList.set(false);
     window.scrollTo({ top: 0 });

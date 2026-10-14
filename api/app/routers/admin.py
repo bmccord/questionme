@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -33,6 +33,20 @@ class NoteIn(BaseModel):
 
 class PromptIn(BaseModel):
     body: str
+
+
+class BaselineIn(BaseModel):
+    """Edit the benchmark answer for one question.
+
+    Every field is optional: send only what you are changing. `baseline` is
+    the free-text answer, `baseline_choices` the selected options for a
+    multiple-choice question, `comment_baseline` the note beside a choice.
+    """
+    baseline: str | None = None
+    baseline_choices: list[str] | None = None
+    baseline_note: str | None = None
+    comment_baseline: str | None = None
+    text: str | None = None
 
 
 @router.post("/login")
@@ -134,6 +148,76 @@ def candidate_detail(cid: int, db: Session = Depends(get_db),
                                  .order_by(Note.created_at))]
     return {"id": c.id, "name": c.name, "email": c.email, "status": c.status.value,
             "submitted_at": c.submitted_at, "questions": rows, "notes": notes}
+
+
+@router.get("/questions/{qid}")
+def get_question(qid: str, db: Session = Depends(get_db),
+                 _: str = Depends(require_admin)) -> dict:
+    q = db.get(Question, qid)
+    if q is None:
+        raise HTTPException(404, "no such question")
+    return {"id": q.id, "num": q.num, "text": q.text, "type": q.type.value,
+            "options": q.options, "multi_select": q.multi_select,
+            "baseline": q.baseline, "baseline_choices": q.baseline_choices,
+            "baseline_note": q.baseline_note, "comment_baseline": q.comment_baseline}
+
+
+@router.put("/questions/{qid}")
+def edit_question(qid: str, payload: BaselineIn, db: Session = Depends(get_db),
+                  _: str = Depends(require_admin)) -> dict:
+    """Edit a baseline in place.
+
+    Deliberately does NOT re-run comparisons. Editing a baseline invalidates
+    every stored verdict for that question, but which candidates to re-run is
+    the reviewer's call - and silently spending on 20 candidates because
+    someone fixed a typo would be worse than making it explicit.
+    """
+    q = db.get(Question, qid)
+    if q is None:
+        raise HTTPException(404, "no such question")
+    if payload.baseline_choices is not None:
+        unknown = [c for c in payload.baseline_choices if c not in (q.options or [])]
+        if unknown:
+            raise HTTPException(400, f"not an option: {unknown}")
+    for field in ("baseline", "baseline_choices", "baseline_note",
+                  "comment_baseline", "text"):
+        value = getattr(payload, field)
+        if value is not None:
+            setattr(q, field, value)
+    db.commit()
+
+    stale = db.scalars(select(Comparison).where(Comparison.question_id == qid)).all()
+    return {"id": q.id, "saved": True,
+            "stale_comparisons": len({c.candidate_id for c in stale})}
+
+
+@router.get("/candidates/{cid}/compare/status")
+def comparison_status(cid: int, db: Session = Depends(get_db),
+                      _: str = Depends(require_admin)) -> dict:
+    """Progress for a running comparison.
+
+    `done`/`total` come from the in-process tracker; `rows` is counted from
+    the database, so the page still shows something true after a restart.
+    """
+    total_q = db.scalar(select(func.count()).select_from(Question)) or 0
+    rows = db.scalar(select(func.count()).select_from(Comparison)
+                     .where(Comparison.candidate_id == cid)) or 0
+    p = comparison_service.progress_for(cid)
+    return {"running": bool(p.get("running")), "done": p.get("done", 0),
+            "total": p.get("total", total_q), "rows": rows, "questions": total_q}
+
+
+@router.post("/candidates/{cid}/compare/{qid}", status_code=202)
+def run_one_comparison(cid: int, qid: str, background: BackgroundTasks,
+                       db: Session = Depends(get_db),
+                       _: str = Depends(require_admin)) -> dict:
+    """Re-compare a single question - after editing its baseline, or the prompt."""
+    if db.get(Candidate, cid) is None:
+        raise HTTPException(404, "no such candidate")
+    if db.get(Question, qid) is None:
+        raise HTTPException(404, "no such question")
+    background.add_task(comparison_service.compare_candidate, cid, [qid])
+    return {"queued": True, "candidate_id": cid, "question_id": qid}
 
 
 @router.post("/candidates/{cid}/compare", status_code=202)

@@ -3,7 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Answer, CandidateDetail, CandidateRow, CandidateView, SubmitPreview,
+  Answer, BaselineEdit, CandidateDetail, CandidateRow, CandidateView,
+  ComparisonStatus, PromptSet, SubmitPreview,
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -58,6 +59,30 @@ export class Api {
   runComparison(id: number) {
     return this.http.post(`/api/admin/candidates/${id}/compare`, {},
       { withCredentials: true });
+  }
+
+  runOneComparison(id: number, questionId: string) {
+    return this.http.post(`/api/admin/candidates/${id}/compare/${questionId}`, {},
+      { withCredentials: true });
+  }
+
+  comparisonStatus(id: number): Observable<ComparisonStatus> {
+    return this.http.get<ComparisonStatus>(
+      `/api/admin/candidates/${id}/compare/status`, { withCredentials: true });
+  }
+
+  editQuestion(questionId: string, body: Partial<BaselineEdit>) {
+    return this.http.put(`/api/admin/questions/${questionId}`, body,
+      { withCredentials: true });
+  }
+
+  prompts(): Observable<PromptSet> {
+    return this.http.get<PromptSet>('/api/admin/prompt', { withCredentials: true });
+  }
+
+  savePrompt(body: string) {
+    return this.http.post<{ id: number; version: number }>('/api/admin/prompt',
+      { body }, { withCredentials: true });
   }
 
   addNote(id: number, body: string) {

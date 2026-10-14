@@ -9,10 +9,26 @@
         @if (counts().differs) { · <strong>{{ counts().differs }}</strong> differ from baseline }
       </p>
     </div>
-    <button type="button" (click)="runComparison()" [disabled]="running()">
-      {{ running() ? 'Running…' : 'Re-run comparison' }}
-    </button>
+    <div class="headactions">
+      <a routerLink="/admin/prompt" class="plain">Comparison prompt</a>
+      <button type="button" (click)="runComparison()" [disabled]="running()">
+        {{ running() ? 'Comparing…' : 'Re-run comparison' }}
+      </button>
+    </div>
   </header>
+
+  @if (running()) {
+    <div class="runbar">
+      <span class="spin"></span>
+      @if (progress(); as p) {
+        <span>Comparing {{ p.done }} of {{ p.total }} questions</span>
+        <div class="track"><div class="fill" [style.width.%]="p.pct"></div></div>
+      } @else {
+        <span>Starting the comparison…</span>
+      }
+      <span class="hint">Results appear below as each question finishes.</span>
+    </div>
+  }
 
   <nav class="filters">
     <button type="button" [class.on]="filter() === 'all'" (click)="filter.set('all')">
@@ -31,11 +47,49 @@
       <div class="head">
         <span class="n">{{ q.num }}</span>
         <h3>{{ q.text }}</h3>
+        <div class="qactions">
+          @if (editing() !== q.id) {
+            <button type="button" class="small" (click)="startEdit(q)">Edit baseline</button>
+          }
+          <button type="button" class="small" [disabled]="busyQuestion() === q.id"
+                  (click)="recompareOne(q)">
+            {{ busyQuestion() === q.id ? 'Comparing…' : 'Re-compare' }}
+          </button>
+        </div>
       </div>
 
       <div class="cols">
         <div class="col baseline">
           <div class="label">Baseline — Nathan Tate</div>
+          @if (editing() === q.id) {
+            <div class="editor">
+              @if (q.type === 'mc') {
+                @for (o of q.options ?? []; track o) {
+                  <label class="editopt">
+                    <input [type]="q.multi_select ? 'checkbox' : 'radio'"
+                           [checked]="draftChoices.includes(o)"
+                           (change)="toggleBaselineChoice(q, o)" />
+                    <span>{{ o }}</span>
+                  </label>
+                }
+                <label class="editlabel">Baseline comment</label>
+                <textarea rows="4" [(ngModel)]="draftComment"></textarea>
+              } @else {
+                <textarea rows="10" [(ngModel)]="draftBaseline"></textarea>
+              }
+              <p class="editnote">
+                Saving does not re-run anything. Use <strong>Re-compare</strong> on
+                this question afterwards, for each candidate you care about.
+              </p>
+              <div class="editactions">
+                <button type="button" (click)="cancelEdit()">Cancel</button>
+                <button type="button" class="primary" [disabled]="savingBaseline()"
+                        (click)="saveBaseline(q)">
+                  {{ savingBaseline() ? 'Saving…' : 'Save baseline' }}
+                </button>
+              </div>
+            </div>
+          } @else {
           @if (q.type === 'mc') {
             <ul class="opts">
               @for (o of q.options ?? []; track o) {
@@ -49,6 +103,7 @@
             <p>{{ q.baseline }}</p>
           } @else {
             <p class="muted">No baseline{{ q.baseline_note ? ' — ' + q.baseline_note : '' }}</p>
+          }
           }
         </div>
 

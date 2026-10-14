@@ -10,6 +10,10 @@ export const routes: Routes = [
     loadComponent: () => import('./admin/login').then(m => m.LoginComponent),
   },
   {
+    path: 'admin/prompt',
+    loadComponent: () => import('./admin/prompt').then(m => m.PromptComponent),
+  },
+  {
     path: 'admin/c/:id',
     loadComponent: () => import('./admin/detail').then(m => m.DetailComponent),
   },

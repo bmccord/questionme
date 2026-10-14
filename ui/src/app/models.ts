@@ -76,3 +76,31 @@ export interface CandidateDetail {
   questions: AdminQuestionRow[];
   notes: { id: number; body: string; updated_at: string }[];
 }
+
+export interface ComparisonStatus {
+  running: boolean;
+  done: number;
+  total: number;
+  rows: number;
+  questions: number;
+}
+
+export interface BaselineEdit {
+  baseline: string | null;
+  baseline_choices: string[] | null;
+  baseline_note: string | null;
+  comment_baseline: string | null;
+  text: string | null;
+}
+
+export interface PromptVersion {
+  id: number;
+  version: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PromptSet {
+  active: { id: number; version: number; body: string } | null;
+  versions: PromptVersion[];
+}
