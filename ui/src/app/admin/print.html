@@ -90,6 +90,11 @@
               <span class="where">({{ c.part === 'comment' ? 'comment' : 'answer' }})</span>
               @if (c.summary) { — {{ c.summary }} }
             </p>
+            <!-- Often the most useful line on the page: nuance flagged on a
+                 question that otherwise reads as a plain match. -->
+            @if (c.detail?.notable) {
+              <p class="notable"><strong>Worth noting:</strong> {{ c.detail.notable }}</p>
+            }
           }
         }
       </section>
