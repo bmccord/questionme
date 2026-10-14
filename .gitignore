@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# THIS REPOSITORY IS PUBLIC.
+#
+# The questionnaire text, the baseline answers and the comparison prompt are
+# NOT published. They live only in the database and in ~/Projects/questionme-data
+# (outside this tree). Nothing below is a substitute for that separation - a
+# .gitignore is one `git add -f` away from being bypassed - but it catches the
+# accidental case.
+# ---------------------------------------------------------------------------
+questions*.json
+*baseline*
+*.docx
+data/
+seed/
+
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# node / angular
+node_modules/
+dist/
+.angular/
+*.log
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/
