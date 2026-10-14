@@ -13,7 +13,10 @@ import { CandidateRow } from '../models';
   template: `
     <header>
       <h1>Candidates</h1>
-      <button type="button" (click)="logout()">Sign out</button>
+      <div class="headactions">
+        <a routerLink="/admin/prompt" class="plain">Comparison prompt</a>
+        <button type="button" (click)="logout()">Sign out</button>
+      </div>
     </header>
 
     <form class="invite" (ngSubmit)="invite()">
@@ -110,6 +113,8 @@ This removes the candidate and their {{ p.answered }}
              background: #fff; border-radius: 6px; cursor: pointer; }
     button.small { padding: .25rem .55rem; font-size: .8rem; }
     a { color: #2f6f4f; }
+    .headactions { display: flex; align-items: center; gap: .9rem; }
+    a.plain { font-size: .9rem; }
     .rowactions { display: flex; gap: .35rem; }
     button.danger { color: #9a2a1a; border-color: #e0bdb4; }
     button.danger.solid { background: #9a2a1a; border-color: #9a2a1a; color: #fff; }
