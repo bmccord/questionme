@@ -138,6 +138,46 @@ def delete_candidate(cid: int, confirm: str = "", db: Session = Depends(get_db),
     return {"deleted": name, "answers": answers, "comparisons": comps, "notes": notes}
 
 
+def _question_row(q: Question, a: Answer | None,
+                  parts: dict[str, Comparison]) -> dict:
+    return {
+        "id": q.id, "num": q.num, "text": q.text, "type": q.type.value,
+        "options": q.options, "multi_select": q.multi_select,
+        "references": q.references,
+        "baseline": q.baseline, "baseline_choices": q.baseline_choices,
+        "baseline_note": q.baseline_note,
+        "comment_prompt": q.comment_prompt, "comment_baseline": q.comment_baseline,
+        "answer": None if a is None else {
+            "value": a.value, "choices": a.choices, "comment": a.comment,
+            "updated_at": a.updated_at,
+        },
+        "comparison": {
+            part: {"verdict": c.verdict, "summary": c.summary, "detail": c.detail,
+                   "model": c.model, "deterministic": c.is_deterministic,
+                   "created_at": c.created_at}
+            for part, c in parts.items()
+        },
+    }
+
+
+@router.get("/candidates/{cid}/questions/{qid}")
+def candidate_question(cid: int, qid: str, db: Session = Depends(get_db),
+                       _: str = Depends(require_admin)) -> dict:
+    """One question's row for one candidate.
+
+    Exists so the page can watch a single re-compare finish without
+    re-fetching all 109 questions on every poll.
+    """
+    q = db.get(Question, qid)
+    if q is None:
+        raise HTTPException(404, "no such question")
+    a = db.scalar(select(Answer).where(Answer.candidate_id == cid,
+                                       Answer.question_id == qid))
+    parts = {c.part: c for c in db.scalars(select(Comparison).where(
+        Comparison.candidate_id == cid, Comparison.question_id == qid))}
+    return _question_row(q, a, parts)
+
+
 @router.get("/candidates/{cid}")
 def candidate_detail(cid: int, db: Session = Depends(get_db),
                      _: str = Depends(require_admin)) -> dict:
@@ -150,31 +190,10 @@ def candidate_detail(cid: int, db: Session = Depends(get_db),
     for comp in db.scalars(select(Comparison).where(Comparison.candidate_id == cid)):
         comps.setdefault(comp.question_id, {})[comp.part] = comp
 
-    rows = []
-    for q in questions:
-        a = answers.get(q.id)
-        parts = comps.get(q.id, {})
-        rows.append({
-            "id": q.id, "num": q.num, "text": q.text, "type": q.type.value,
-            "options": q.options, "multi_select": q.multi_select,
-            "references": q.references,
-            "baseline": q.baseline, "baseline_choices": q.baseline_choices,
-            "baseline_note": q.baseline_note,
-            "comment_prompt": q.comment_prompt, "comment_baseline": q.comment_baseline,
-            "answer": None if a is None else {
-                "value": a.value, "choices": a.choices, "comment": a.comment,
-                "updated_at": a.updated_at,
-            },
-            # One entry per answer component: "answer" always, plus
-            # "comment" where a multiple-choice question had a note beside it.
-            "comparison": {
-                part: {"verdict": comp.verdict, "summary": comp.summary,
-                       "detail": comp.detail, "model": comp.model,
-                       "deterministic": comp.is_deterministic,
-                       "created_at": comp.created_at}
-                for part, comp in parts.items()
-            },
-        })
+    # One comparison entry per answer component: "answer" always, plus
+    # "comment" where a multiple-choice question had a note beside it.
+    rows = [_question_row(q, answers.get(q.id), comps.get(q.id, {}))
+            for q in questions]
     notes = [{"id": n.id, "body": n.body, "updated_at": n.updated_at}
              for n in db.scalars(select(Note).where(Note.candidate_id == cid)
                                  .order_by(Note.created_at))]

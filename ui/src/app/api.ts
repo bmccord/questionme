@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Answer, BaselineEdit, CandidateDetail, CandidateRow, CandidateView,
-  ComparisonStatus, PromptSet, SubmitPreview,
+  AdminQuestionRow, Answer, BaselineEdit, CandidateDetail, CandidateRow,
+  CandidateView, ComparisonStatus, PromptSet, SubmitPreview,
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -66,6 +66,11 @@ export class Api {
   runComparison(id: number) {
     return this.http.post(`/api/admin/candidates/${id}/compare`, {},
       { withCredentials: true });
+  }
+
+  candidateQuestion(id: number, questionId: string): Observable<AdminQuestionRow> {
+    return this.http.get<AdminQuestionRow>(
+      `/api/admin/candidates/${id}/questions/${questionId}`, { withCredentials: true });
   }
 
   runOneComparison(id: number, questionId: string) {

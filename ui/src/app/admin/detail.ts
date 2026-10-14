@@ -127,14 +127,54 @@ export class DetailComponent {
     this.api.runComparison(this.id).subscribe(() => this.watch());
   }
 
+  /** Re-compare one question and refresh just that block when it lands.
+   *
+   *  Watches for the stored verdict's timestamp to CHANGE rather than
+   *  waiting a fixed time. A flat timeout races the background task - it can
+   *  elapse before the work starts, or finish long after - and either way it
+   *  reports something untrue. Only this question's row is refetched and
+   *  spliced in, so the rest of the page does not flicker or lose scroll. */
   recompareOne(q: AdminQuestionRow) {
+    const before = this.stamp(q);
     this.busyQuestion.set(q.id);
-    this.api.runOneComparison(this.id, q.id).subscribe(() => {
-      // One question is quick; poll briefly rather than reloading blind.
-      setTimeout(() => {
-        this.load();
-        this.busyQuestion.set(null);
-      }, 4000);
+    this.api.runOneComparison(this.id, q.id).subscribe({
+      next: () => this.awaitQuestion(q.id, before, Date.now() + 90_000),
+      error: () => this.busyQuestion.set(null),
+    });
+  }
+
+  /** A fingerprint of the stored verdicts, so a change is unambiguous. */
+  private stamp(q: AdminQuestionRow): string {
+    return Object.entries(q.comparison ?? {})
+      .map(([part, c]) => `${part}:${c.created_at}:${c.verdict}`)
+      .sort().join('|');
+  }
+
+  private awaitQuestion(qid: string, before: string, deadline: number) {
+    this.api.candidateQuestion(this.id, qid).subscribe({
+      next: row => {
+        if (this.stamp(row) !== before) {
+          this.splice(row);
+          this.busyQuestion.set(null);
+          return;
+        }
+        if (Date.now() > deadline) {
+          this.busyQuestion.set(null);     // give up quietly; nothing is lost
+          return;
+        }
+        setTimeout(() => this.awaitQuestion(qid, before, deadline), 1200);
+      },
+      error: () => this.busyQuestion.set(null),
+    });
+  }
+
+  /** Replace one question in place, leaving the other 108 alone. */
+  private splice(row: AdminQuestionRow) {
+    const d = this.data();
+    if (!d) return;
+    this.data.set({
+      ...d,
+      questions: d.questions.map(q => (q.id === row.id ? row : q)),
     });
   }
 
@@ -166,7 +206,8 @@ export class DetailComponent {
       next: () => {
         this.savingBaseline.set(false);
         this.editing.set(null);
-        this.load();
+        // Refresh just this question - the edit changed nothing else.
+        this.api.candidateQuestion(this.id, q.id).subscribe(r => this.splice(r));
       },
       error: () => this.savingBaseline.set(false),
     });
