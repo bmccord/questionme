@@ -44,7 +44,7 @@ def check_admin(username: str, password: str, client: str) -> bool:
                             "too many attempts, wait a few minutes")
     ok = hmac.compare_digest(username, settings.admin_user)
     try:
-        _hasher.verify(settings.admin_password_hash, password)
+        _hasher.verify(settings.admin_hash, password)
     except (VerifyMismatchError, Exception):
         ok = False
     if not ok:
