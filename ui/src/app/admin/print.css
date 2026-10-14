@@ -1,0 +1,63 @@
+:host { display: block; max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 4rem;
+        color: #1b1b1f; }
+
+/* --- screen-only controls ------------------------------------------------ */
+.controls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+            padding: .8rem 1rem; background: #f5f5f8; border-radius: 8px;
+            margin-bottom: 1rem; font-size: .9rem; }
+.controls a { color: #2f6f4f; text-decoration: none; margin-right: auto; }
+.controls label { display: flex; align-items: center; gap: .35rem; }
+.controls button { font: inherit; padding: .5rem .9rem; border: 0; border-radius: 6px;
+                   background: #2f6f4f; color: #fff; cursor: pointer; }
+.caution { font-size: .85rem; background: #fdf6e6; border-left: 4px solid #c8a24a;
+           padding: .6rem .85rem; border-radius: 0 6px 6px 0; margin-bottom: 1.5rem; }
+.loading { color: #7a7a85; }
+.controls label.off { opacity: .45; }
+.ok { font-size: .85rem; background: #f2f7f4; border-left: 4px solid #2f6f4f;
+      padding: .6rem .85rem; border-radius: 0 6px 6px 0; margin-bottom: 1.5rem; }
+
+/* --- the document -------------------------------------------------------- */
+.doc header { border-bottom: 2px solid #1b1b1f; padding-bottom: .75rem;
+              margin-bottom: 1.5rem; }
+.doc h1 { font-size: 1.4rem; margin: 0 0 .3rem; }
+.who { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.meta { margin: .25rem 0 0; font-size: .85rem; color: #55555f; }
+
+.q { margin-bottom: 1.6rem; }
+.q h2 { font-size: .98rem; font-weight: 600; line-height: 1.45; margin: 0 0 .6rem; }
+.q h2 .n { color: #7a7a85; margin-right: .3rem; }
+
+.block { padding: .55rem .8rem; border-radius: 5px; margin-bottom: .5rem; }
+.block p { margin: 0 0 .4rem; white-space: pre-wrap; line-height: 1.55; font-size: .92rem; }
+.block p:last-child { margin-bottom: 0; }
+.answer { background: #f2f7f4; }
+.baseline { background: #f6f6f9; }
+.label { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+         color: #55555f; margin-bottom: .3rem; }
+.block ul { list-style: none; margin: 0 0 .3rem; padding: 0; font-size: .92rem; }
+.block li { color: #7a7a85; padding: .08rem 0; }
+.block li.on { color: #1b1b1f; font-weight: 600; }
+.note { font-size: .88rem; border-left: 2px solid #ccccd4; padding-left: .55rem; }
+.none { color: #8a8a94; font-style: italic; }
+.verdict { font-size: .85rem; margin: .35rem 0 0; line-height: 1.5; }
+.verdict strong { text-transform: uppercase; font-size: .72rem; letter-spacing: .05em; }
+.verdict .where { color: #7a7a85; }
+.notes { margin-top: 2rem; border-top: 1px solid #ccccd4; padding-top: 1rem; }
+
+/* --- print ---------------------------------------------------------------
+   Keep each question whole where it fits, so an answer never starts on a
+   page its question is not on. */
+@media print {
+  :host { max-width: none; padding: 0; font-size: 10.5pt; }
+  .controls, .caution, .ok { display: none !important; }
+  .q { break-inside: avoid; page-break-inside: avoid; }
+  .doc header { break-after: avoid; }
+  .q h2 { break-after: avoid; }
+  .block { background: none !important; border: 1px solid #ccc;
+           -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .answer { border-left: 3px solid #2f6f4f; }
+  .baseline { border-left: 3px solid #999; }
+  a { text-decoration: none; color: inherit; }
+}
+
+@page { margin: 18mm 16mm; }

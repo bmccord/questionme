@@ -1,0 +1,107 @@
+@if (data(); as d) {
+  <!-- Controls: on screen only, never printed. -->
+  <div class="controls">
+    <a routerLink="/admin/c/{{ d.id }}">← Back to {{ d.name }}</a>
+    <label><input type="checkbox" [(ngModel)]="includeBaseline"
+                  (ngModelChange)="onBaselineToggle()" /> Include baseline</label>
+    <label [class.off]="!includeBaseline">
+      <input type="checkbox" [(ngModel)]="includeVerdicts"
+             [disabled]="!includeBaseline" /> Include comparison
+    </label>
+    <label><input type="checkbox" [(ngModel)]="unansweredToo" /> Include unanswered</label>
+    <button type="button" (click)="print()">Print / Save as PDF</button>
+  </div>
+  @if (includeBaseline) {
+    <p class="caution">
+      This includes the baseline answers, and the comparison summaries quote
+      and describe them. Switch "Include baseline" off before sharing this
+      with anyone other than yourself.
+    </p>
+  } @else {
+    <p class="ok">
+      Baseline excluded. The comparison is excluded too &mdash; its summaries
+      restate the baseline, so keeping it would defeat the point.
+      This is the candidate&rsquo;s own answers only.
+    </p>
+  }
+
+  <article class="doc">
+    <header>
+      <h1>Doctrinal Questionnaire</h1>
+      <p class="who">{{ d.name }}@if (d.email) { <span> · {{ d.email }}</span> }</p>
+      <p class="meta">
+        {{ counts().answered }} of {{ counts().total }} answered ·
+        @if (d.submitted_at) {
+          Submitted {{ d.submitted_at | date:'longDate' }}
+        } @else {
+          Not yet submitted
+        }
+        · Printed {{ printedOn | date:'longDate' }}
+      </p>
+    </header>
+
+    @for (q of rows(); track q.id) {
+      <section class="q">
+        <h2><span class="n">{{ q.num }}.</span> {{ q.text }}</h2>
+
+        <div class="block answer">
+          <div class="label">{{ d.name }}</div>
+          @if (q.type === 'mc') {
+            <ul>
+              @for (o of q.options ?? []; track o) {
+                <li [class.on]="(q.answer?.choices ?? []).includes(o)">
+                  {{ (q.answer?.choices ?? []).includes(o) ? '☑' : '☐' }} {{ o }}
+                </li>
+              }
+            </ul>
+            @if (q.answer?.comment) { <p class="note">{{ q.answer!.comment }}</p> }
+            @if (!hasAnswer(q)) { <p class="none">Not answered</p> }
+          } @else if (hasAnswer(q)) {
+            <p>{{ q.answer!.value }}</p>
+          } @else {
+            <p class="none">Not answered</p>
+          }
+        </div>
+
+        @if (includeBaseline) {
+          <div class="block baseline">
+            <div class="label">Baseline</div>
+            @if (q.type === 'mc') {
+              <ul>
+                @for (o of q.options ?? []; track o) {
+                  <li [class.on]="(q.baseline_choices ?? []).includes(o)">
+                    {{ (q.baseline_choices ?? []).includes(o) ? '☑' : '☐' }} {{ o }}
+                  </li>
+                }
+              </ul>
+              @if (q.comment_baseline) { <p class="note">{{ q.comment_baseline }}</p> }
+            } @else if (q.baseline) {
+              <p>{{ q.baseline }}</p>
+            } @else {
+              <p class="none">No baseline{{ q.baseline_note ? ' — ' + q.baseline_note : '' }}</p>
+            }
+          </div>
+        }
+
+        @if (includeVerdicts) {
+          @for (c of parts(q); track c.part) {
+            <p class="verdict">
+              <strong>{{ c.verdict }}</strong>
+              <span class="where">({{ c.part === 'comment' ? 'comment' : 'answer' }})</span>
+              @if (c.summary) { — {{ c.summary }} }
+            </p>
+          }
+        }
+      </section>
+    }
+
+    @if (d.notes.length && includeVerdicts) {
+      <section class="notes">
+        <h2>Private notes</h2>
+        @for (n of d.notes; track n.id) { <p>{{ n.body }}</p> }
+      </section>
+    }
+  </article>
+} @else {
+  <p class="loading">Loading…</p>
+}

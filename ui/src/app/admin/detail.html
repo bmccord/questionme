@@ -11,6 +11,7 @@
     </div>
     <div class="headactions">
       <a routerLink="/admin/prompt" class="plain">Comparison prompt</a>
+      <a routerLink="/admin/c/{{ d.id }}/print" class="plain">Print / PDF</a>
       <button type="button" (click)="runComparison()" [disabled]="running()">
         {{ running() ? 'Comparing…' : 'Re-run comparison' }}
       </button>

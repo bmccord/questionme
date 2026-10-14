@@ -14,6 +14,10 @@ export const routes: Routes = [
     loadComponent: () => import('./admin/prompt').then(m => m.PromptComponent),
   },
   {
+    path: 'admin/c/:id/print',
+    loadComponent: () => import('./admin/print').then(m => m.PrintComponent),
+  },
+  {
     path: 'admin/c/:id',
     loadComponent: () => import('./admin/detail').then(m => m.DetailComponent),
   },
