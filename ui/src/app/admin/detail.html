@@ -51,7 +51,10 @@
           @if (editing() !== q.id) {
             <button type="button" class="small" (click)="startEdit(q)">Edit baseline</button>
           }
-          <button type="button" class="small" [disabled]="busyQuestion() === q.id"
+          <button type="button" class="small"
+                  [disabled]="busyQuestion() === q.id || !hasAnswer(q)"
+                  [title]="hasAnswer(q) ? 'Compare this answer again'
+                                        : 'Nothing to compare — not answered'"
                   (click)="recompareOne(q)">
             {{ busyQuestion() === q.id ? 'Comparing…' : 'Re-compare' }}
           </button>
@@ -117,6 +120,9 @@
                 </li>
               }
             </ul>
+            <!-- Without this an unanswered multiple-choice question looks the
+                 same as one where every option happens to be unticked. -->
+            @if (!hasAnswer(q)) { <p class="muted skipped">Not answered</p> }
             @if (q.answer?.comment) { <p class="note">{{ q.answer!.comment }}</p> }
           } @else if (hasAnswer(q)) {
             <p>{{ q.answer!.value }}</p>

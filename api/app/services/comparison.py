@@ -7,8 +7,11 @@ Rules that shape this file:
    something that has one correct answer. Only free text and the optional
    comment on an MC question are sent.
 
-2. Skipped is not a verdict about content. An answer whose value is NULL is
-   recorded as `not_answered` without an API call.
+2. An unanswered question is not compared at all. There is nothing to judge,
+   and the admin view already shows "Not answered" from the answer itself -
+   a comparison row saying the same thing was duplicate state that made a
+   re-run look like it had done work it had not. Any stale row for a
+   now-unanswered question is removed.
 
 3. Cross-references are resolved before sending. A candidate who writes
    "see #14" is making a reasonable move on a 122-question form, and a model
@@ -33,6 +36,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 
 from ..config import settings
@@ -101,6 +105,13 @@ def _finish(candidate_id: int) -> None:
 
 
 # --- plain data, safe to hand to worker threads ----------------------------
+def _is_answered(qtype: str, value: str | None, choices: list | None) -> bool:
+    """The same rule the candidate form and the admin view use."""
+    if qtype == "mc":
+        return bool(choices)
+    return value is not None and value.strip() != ""
+
+
 @dataclass
 class _Task:
     qid: str
@@ -173,7 +184,7 @@ def _ask(client, prompt_body: str, t: _Task, baseline: str, theirs: str,
 def _rows_for(t: _Task, client, body: str, prompt_id: int | None,
               candidate_id: int, said_by_num: dict[str, str]) -> list[Comparison]:
     rows: list[Comparison] = []
-    if t.qtype == "mc":
+    if t.qtype == "mc":  # noqa: SIM108
         rows.append(Comparison(
             candidate_id=candidate_id, question_id=t.qid, part="answer",
             verdict=_mc_verdict(t.their_choices, t.baseline_choices),
@@ -185,11 +196,9 @@ def _rows_for(t: _Task, client, body: str, prompt_id: int | None,
         theirs, base, part = t.their_value, t.baseline, "answer"
 
     if theirs is None or not theirs.strip():
-        # An unused optional comment box is not a finding.
-        if part == "answer" or base:
-            rows.append(Comparison(candidate_id=candidate_id, question_id=t.qid,
-                                   part=part, verdict="not_answered",
-                                   is_deterministic=True))
+        # Nothing to say. An unused optional comment box is not a finding,
+        # and an unanswered question never reaches here at all.
+        pass
     elif not base:
         rows.append(Comparison(candidate_id=candidate_id, question_id=t.qid,
                                part=part, verdict="no_baseline",
@@ -249,9 +258,13 @@ def compare_candidate(candidate_id: int, question_ids: list[str] | None = None) 
             if said:
                 said_by_num[q.num.lower()] = said
 
-        tasks = []
+        tasks, skipped = [], []
         for q in questions:
             a = answers.get(q.id)
+            if not _is_answered(q.type.value, a.value if a else None,
+                                a.choices if a else None):
+                skipped.append(q.id)
+                continue
             tasks.append(_Task(
                 qid=q.id, qnum=q.num, qtext=q.text, qtype=q.type.value,
                 options=q.options, baseline=q.baseline,
@@ -262,6 +275,17 @@ def compare_candidate(candidate_id: int, question_ids: list[str] | None = None) 
                 their_comment=a.comment if a else None))
     finally:
         db.close()
+
+    # Drop any verdict left over from when the question had an answer.
+    if skipped:
+        db = SessionLocal()
+        try:
+            db.execute(sa_delete(Comparison).where(
+                Comparison.candidate_id == candidate_id,
+                Comparison.question_id.in_(skipped)))
+            db.commit()
+        finally:
+            db.close()
 
     client = None
     if settings.anthropic_api_key:
